@@ -1,0 +1,16 @@
+env
+.env
+__pycache__
+*.pyc
+*egg-info
+*.egg-info
+*.egg
+data/
+*.log
+*.db
+*.sqlite3
+*.json
+dist/
+build/
+.mypy_cache/
+.vscode/
