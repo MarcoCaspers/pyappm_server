@@ -7,7 +7,7 @@ env_lib_installer="python3 -m pip"
 
 [project]
 name="pyappm_server"
-version="1.0.0alpha4"
+version="1.0.0alpha5"
 readme="README.md"
 license="LICENSE.txt"
 description=""

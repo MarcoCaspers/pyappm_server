@@ -34,3 +34,8 @@
 - Changed pyappm_server executable into a shell script to be used with the service file.
 - Added pyappm_server.service file for systemd
 - Disabled docs and redocs in the FastAPI app
+
+## [1.0.0.a5] - 2024-09-17
+
+- Changed data directory long arg name to --data
+- Updated startup code to better handle the data directory

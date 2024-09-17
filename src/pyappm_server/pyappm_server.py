@@ -123,11 +123,15 @@ def prefix(path: str) -> str:
 
 def run(app: FastAPI) -> None:
     args = parse_args()
-    db_file_path = (
-        Path(args.db_file_path, "pyappm.db")
-        if Path(args.db_file_path).exists()
-        else config.DEFAULT_DB_FILE_PATH
-    )
+    path = Path(args.data)
+    if path.is_dir():
+        db_file_path = path / "pyappm.db"
+        db_file_path = db_file_path.resolve()
+    elif path.is_file():
+        db_file_path = path.resolve()
+    else:
+        db_file_path = Path(config.DEFAULT_DB_FILE_PATH).resolve()
+
     settings = Settings(
         app_name=config.DEFAULT_APP_NAME,
         db_file_path=db_file_path,
