@@ -89,6 +89,8 @@ app: FastAPI = FastAPI(
     title="Python application manager api server",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
 )
 
 
@@ -97,7 +99,7 @@ def parse_args() -> Namespace:
 
     parser.add_argument(
         "-d",
-        "--db-file-path",
+        "--data",
         type=str,
         default=config.DEFAULT_DB_FILE_PATH,
         help="Path to the database file",

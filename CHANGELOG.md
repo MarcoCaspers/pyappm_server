@@ -28,4 +28,9 @@
 ## [1.0.0.a4] - 2024-09-11
 
 - renamed install.py to pyappm_server_init.py
-- 
+- updated README.md
+- updated LICENSE.txt
+- Added Makefile
+- Changed pyappm_server executable into a shell script to be used with the service file.
+- Added pyappm_server.service file for systemd
+- Disabled docs and redocs in the FastAPI app

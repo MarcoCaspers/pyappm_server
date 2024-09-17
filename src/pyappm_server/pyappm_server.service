@@ -1,0 +1,8 @@
+[Service]
+User=pyappm_server
+Group=pyappm_server
+ExecStart=/etc/pyappm_server/pyappm_server
+ExecStop=/usr/bin/pkill -f /etc/pyappm_server/pyappm_server
+
+[Install]
+WantedBy=multi-user.target

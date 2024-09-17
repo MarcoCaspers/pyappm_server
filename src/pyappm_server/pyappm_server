@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/bash
 
-import sys
-import re
-from pyappm_server import main  # type: ignore
-
-if __name__ == "__main__":
-    sys.argv[0] = re.sub(r"(-script\.pyw|\.exe)?$", "", sys.argv[0])
-    sys.exit(main())
+cd /etc/pyappm_server && source env/bin/activate && env/bin/python3 pyappm_server.py --data data
