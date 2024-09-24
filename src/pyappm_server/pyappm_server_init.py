@@ -39,6 +39,7 @@ from pyappm_server_defaults import register_default_user
 from pyappm_server_config import DEFAULT_APP_NAME
 from pyappm_server_config import DEFAULT_DB_FILE_PATH
 from pyappm_server_config import DEFAULT_CLIENT_ORIGIN
+from pyappm_server_config import DEFAULT_UPLOAD_PATH
 
 from pyappm_database import Database
 
@@ -54,14 +55,16 @@ def install() -> None:
         env_file.write(f'APP_NAME="{DEFAULT_APP_NAME}"\n')
         env_file.write(f'DB_FILE_PATH="{DEFAULT_DB_FILE_PATH}"\n')
         env_file.write(f'CLIENT_ORIGIN="{DEFAULT_CLIENT_ORIGIN}"\n')
+        env_file.write(f'UPLOAD_PATH="{DEFAULT_UPLOAD_PATH}"\n')
         env_file.write(f'SECRET_KEY="{secrets.token_hex(32)}"\n')
-        env_file.write(f'ALGORITHM="HS256"\n')
+        env_file.write(f'ALGORITHM="HS256"\n\n')
     print("Environment variables have been created.")
     print("Creating the database.")
     settings = Settings(
         app_name=DEFAULT_APP_NAME,
         db_file_path=DEFAULT_DB_FILE_PATH,
         client_origin=DEFAULT_CLIENT_ORIGIN,
+        upload_path=DEFAULT_UPLOAD_PATH,
     )
     path = Path(settings.db_file_path).parent
     if not path.exists():

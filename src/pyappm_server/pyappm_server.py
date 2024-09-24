@@ -34,6 +34,8 @@
 #
 # This is the main entry point for the pyappm_server application
 #
+
+import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -132,12 +134,17 @@ def parse_args() -> Namespace:
         default=pyappm_server_config.DEFAULT_DB_FILE_PATH,
         help="Path to the database file",
     )
-    # parser.add_argument(
-    #    "--client-origin",
-    #    type=str,
-    #    default=config.DEFAULT_CLIENT_ORIGIN,
-    #    help="Client origin",
-    # )
+    parser.add_argument(
+        "--client-origin",
+        type=str,
+        default=pyappm_server_config.DEFAULT_CLIENT_ORIGIN,
+        help="Client origin",
+    )
+    parser.add_argument(
+        "--upload-path",
+        type=str,
+        default=pyappm_server_config.DEFAULT_UPLOAD_PATH,
+    )
     return parser.parse_args()
 
 
@@ -150,6 +157,20 @@ def prefix(path: str) -> str:
 
 
 def run(app: FastAPI) -> None:
+    db_file_path: Path = Path(pyappm_server_config.DEFAULT_DB_FILE_PATH).resolve()
+    client_origin: str = pyappm_server_config.DEFAULT_CLIENT_ORIGIN
+    upload_path: Path = Path(pyappm_server_config.DEFAULT_UPLOAD_PATH).resolve()
+
+    dbpp = os.getenv("DB_FILE_PATH")
+    if dbpp is not None:
+        db_file_path = Path(dbpp).resolve()
+    co = os.getenv("CLIENT_ORIGIN")
+    if co is not None:
+        client_origin = co
+    up = os.getenv("UPLOAD_PATH")
+    if up is not None:
+        upload_path = Path(up).resolve()
+
     args = parse_args()
     path = Path(args.data)
     if path.is_dir():
@@ -159,11 +180,15 @@ def run(app: FastAPI) -> None:
         db_file_path = path.resolve()
     else:
         db_file_path = Path(pyappm_server_config.DEFAULT_DB_FILE_PATH).resolve()
-
+    if args.client_origin is not None:
+        client_origin = args.client_origin
+    if args.upload_path is not None:
+        upload_path = Path(args.upload_path).resolve()
     settings = Settings(
         app_name=pyappm_server_config.DEFAULT_APP_NAME,
         db_file_path=db_file_path,
-        client_origin=pyappm_server_config.DEFAULT_CLIENT_ORIGIN,
+        client_origin=client_origin,
+        upload_path=upload_path,
     )
     pyappm_server_config.settings = settings
     pyappm_server_config.database = Database(settings)

@@ -57,3 +57,9 @@
 - Added uploadpath to Settings in schemas.py
 - Updated ApplicationSchema so it can be used in the /apps/add endpoint when the user uploads a file.
 - Added /apps/get endpoint to get an app by its name.
+
+## [1.0.0.a7] - 2024-09-24
+
+- Upload path added to .env file
+- Upload path, client orign and datapath now coming from defaults first, then can be overridden by the .env file, which
+  in turn can be overridden by the command line arguments.
