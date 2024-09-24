@@ -33,6 +33,7 @@
 import sqlite3 as sql
 from typing import Any
 from datetime import datetime
+from pathlib import Path
 
 from schemas import UserToRegisterSchema  # type: ignore
 from schemas import UserEntity
@@ -40,13 +41,12 @@ from schemas import SaferUserEntity
 from schemas import ApplicationAuthorSchema
 from schemas import ApplicationSchema
 from schemas import Settings
-
-from fastapi import HTTPException
+from schemas import AppsResponseModel
 
 
 class Database:
     def __init__(self, settings: Settings) -> None:
-        self.db_name: str = ""
+        self.db_name: Path = Path()
         self.opened: bool = False
         self.open(settings.db_file_path)
 
@@ -69,7 +69,7 @@ class Database:
         self.cursor.execute(query, values)
         return self.cursor.fetchall()
 
-    def open(self, db_name: str) -> None:
+    def open(self, db_name: Path) -> None:
         if self.opened:
             raise Exception("Database already open")
         self.db_name = db_name
@@ -250,7 +250,7 @@ class Database:
             return None
         return SaferUserEntity(**user.model_dump())
 
-    def update_user(self, user: UserEntity) -> UserEntity:
+    def update_user(self, user: UserEntity) -> UserEntity | None:
         cmd = f"UPDATE users SET name=?, email=?, otp_enabled=?, otp_verified=?, otp_base32=?, otp_auth_url=?, updated_at=? WHERE id=?"
         self.execute(
             cmd,
@@ -265,10 +265,10 @@ class Database:
                 user.id,
             ),
         )
-        return self.find_async("id", user.id)
+        return self.find("id", user.id)
 
-    async def update_user_async(self, user: UserEntity) -> None:
-        self.update_user(user)
+    async def update_user_async(self, user: UserEntity) -> UserEntity | None:
+        return self.update_user(user)
 
     def delete_user(self, user_id: int) -> None:
         self.execute(f"DELETE FROM users WHERE id=?", (user_id,))
@@ -288,7 +288,10 @@ class Database:
             ),
         )
 
-    def __apps_from_rows__(self, rows: list) -> list[ApplicationSchema]:
+    async def create_app_async(self, app: ApplicationSchema) -> None:
+        self.create_app(app)
+
+    def __apps_from_rows__(self, rows: list) -> AppsResponseModel:
         apps_list = []
         for row in rows:
             id = int(row[0])
@@ -312,10 +315,10 @@ class Database:
             apps_list.append(app)
         return apps_list
 
-    def find_app_by_name(self, name: str) -> list[ApplicationSchema] | None:
+    def find_app_by_name(self, name: str) -> AppsResponseModel | None:
         return self.find_app("name", name)
 
-    async def find_app_by_name_async(self, name: str) -> list[ApplicationSchema] | None:
+    async def find_app_by_name_async(self, name: str) -> AppsResponseModel | None:
         return self.find_app_by_name(name)
 
     def find_app_by_id(self, app_id: int) -> ApplicationSchema | None:
@@ -327,7 +330,7 @@ class Database:
     async def find_app_by_id_async(self, app_id: int) -> ApplicationSchema | None:
         return self.find_app_by_id(app_id)
 
-    def find_app(self, field: str, value: Any) -> list[ApplicationSchema] | None:
+    def find_app(self, field: str, value: Any) -> AppsResponseModel | None:
         rows = self.fetch(f"SELECT * FROM app WHERE {field}=?", (value,))
         if rows is None:
             return None
@@ -335,7 +338,7 @@ class Database:
             return None
         return self.__apps_from_rows__(rows)
 
-    def read_apps_by_owner_id(self, owner_id: int) -> list[ApplicationSchema]:
+    def read_apps_by_owner_id(self, owner_id: int) -> AppsResponseModel:
         rows = self.find_app("owner_id", owner_id)
         if rows is None:
             return []
@@ -346,16 +349,18 @@ class Database:
     ) -> list[ApplicationSchema]:
         return self.read_apps_by_owner_id(owner_id)
 
-    def read_apps(self) -> list[ApplicationSchema]:
+    def read_apps(self) -> AppsResponseModel:
         rows = self.fetch_query("SELECT * FROM app")
         if rows is None:
             return []
         return self.__apps_from_rows__(rows)
 
-    async def read_apps_async(self) -> list[ApplicationSchema]:
+    async def read_apps_async(self) -> AppsResponseModel:
         return self.read_apps()
 
-    def update_app(self, app_id: int, app: ApplicationSchema) -> ApplicationSchema:
+    def update_app(
+        self, app_id: int, app: ApplicationSchema
+    ) -> ApplicationSchema | None:
         cmd = f"UPDATE app SET owner_id=?, name=?, type=?, version=?, description=?, updated_at=? WHERE id=?"
         self.execute(
             cmd,
@@ -442,7 +447,9 @@ class Database:
     ) -> list[ApplicationAuthorSchema]:
         return self.read_authors_by_app_id(app_id)
 
-    def update_author(self, author: ApplicationAuthorSchema) -> ApplicationAuthorSchema:
+    def update_author(
+        self, author: ApplicationAuthorSchema
+    ) -> ApplicationAuthorSchema | None:
         cmd = f"UPDATE authors SET app_id=?, name=?, email=?, updated_at=? WHERE id=?"
         self.execute(
             cmd,

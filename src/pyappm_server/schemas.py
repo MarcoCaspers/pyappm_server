@@ -35,6 +35,7 @@ from pydantic import EmailStr
 from pydantic import Field
 from fastapi import Body
 from typing_extensions import Annotated
+from typing import Any
 from pathlib import Path
 
 
@@ -174,14 +175,15 @@ class LoginRequestModel(BaseModel):
 
 
 class ApplicationSchema(BaseModel):
-    id: int  # application db table primary key
+    id: int | None = None  # application db table primary key, None for new applications
     owner_id: int  # reference to the user that manages/maintains the application
     name: str  # name of the application
     type: str  # type of the application (application or service)
     version: str  # version of the application
-    description: str | None = None  # description of the application (optional)
-    created_at: datetime
-    updated_at: datetime
+    description: str | None = None  # description (optional)
+    created_at: datetime | None = None  # creation date, None for new applications
+    updated_at: datetime | None = None  # last update date, None for new applications
+    sha_256: str | None = None  # sha256 hash of the file, None if not uploading.
 
 
 class ApplicationAuthorSchema(BaseModel):
@@ -196,7 +198,9 @@ class ApplicationAuthorSchema(BaseModel):
 class Settings(BaseModel):
     app_name: str
     db_file_path: Path
-    client_origin: str
+    # default client origin for protecting against CSRF attacks
+    client_origin: str = "http://localhost:8000"
+    upload_path: Path = Path("uploads")
 
     class Config:
         env_file: str = ".env"
@@ -206,3 +210,19 @@ class Settings(BaseModel):
 
 AppsResponseModel = list[ApplicationSchema]
 AuthorsResponseModel = list[ApplicationAuthorSchema]
+
+
+class FileResponseModel(BaseModel):
+    file_name: str
+    file_size: int
+    file_type: str
+    file_sha256: str
+    file: bytes
+    app_type: str
+    app_version: str
+    description: str
+    created_at: datetime
+    updated_at: datetime
+
+
+FilesResponseModel = list[FileResponseModel]

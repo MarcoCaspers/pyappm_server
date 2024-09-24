@@ -32,9 +32,9 @@
 #
 # This is the api router for the base_url/ endpoints.
 
-from fastapi import APIRouter, HTTPException, status  # type: ignore
+from fastapi import APIRouter  # type: ignore
 
-from schemas import MessageResponseModel  # type: ignore
+from schemas import MessageResponseModel
 
 from __about__ import __version__  # type: ignore
 
@@ -43,17 +43,16 @@ router = APIRouter()
 
 @router.get("/", response_model=MessageResponseModel)
 def root() -> MessageResponseModel:
-    return {"message": "Python application manager server"}
+    return MessageResponseModel(message="Python application manager server")
 
 
 @router.get("/health", response_model=MessageResponseModel)
 def health() -> MessageResponseModel:
-    return {"message": "Python application manager server is healthy"}
+    return MessageResponseModel(message="Python application manager server is healthy")
 
 
 @router.get("/version", response_model=MessageResponseModel)
 def version() -> MessageResponseModel:
-    return {"message": f"Python application manager server version {__version__}"}
-
-
-# EOF
+    return MessageResponseModel(
+        message=f"Python application manager server version {__version__}"
+    )

@@ -107,14 +107,12 @@
 # register => generate-qr => verify => validate
 
 import io
-from datetime import datetime, timezone
 import pyotp
 import qrcode  # type: ignore
-from fastapi import APIRouter, HTTPException, status  # type: ignore
-from fastapi import Body
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from schemas import UserRequestSchema  # type: ignore
+from schemas import UserRequestSchema
 from schemas import OTPResponseModel
 from schemas import VerifyResponseModel
 from schemas import ValidateResponseModel
@@ -125,14 +123,15 @@ from datetime import timedelta
 from fastapi import Depends
 import bcrypt  # type: ignore
 
-import config  # type: ignore
+import pyappm_server_config
 
-from pyappm_auth_tools import ACCESS_TOKEN_EXPIRE_MINUTES  # type: ignore
-from pyappm_auth_tools import ACCESS_TOKEN_EXPIRE_MINUTES_SHORT  # type: ignore
+from pyappm_auth_tools import ACCESS_TOKEN_EXPIRE_MINUTES
+from pyappm_auth_tools import ACCESS_TOKEN_EXPIRE_MINUTES_SHORT
 from pyappm_auth_tools import __create_access_token__
 from pyappm_auth_tools import __get_current_user__
 from pyappm_auth_tools import blacklist_token
 from pyappm_auth_tools import __hash_password__
+from pyappm_auth_tools import is_token_blacklisted
 
 router = APIRouter()
 
@@ -201,13 +200,28 @@ async def generate_otp(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found",
         )
+    if payload.token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is invalid",
+        )
+    if is_token_blacklisted(str(payload.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
     otp_base32 = pyotp.random_base32()
     otp_auth_url = pyotp.totp.TOTP(otp_base32).provisioning_uri(
         payload.email, issuer_name="pyappm.nl"
     )
     payload.otp_base32 = otp_base32
     payload.otp_auth_url = otp_auth_url
-    config.database.update_user(payload)
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not found",
+        )
+    pyappm_server_config.database.update_user(payload)
     qr_code = await __create_qr_code__(otp_base32, payload)
 
     return StreamingResponse(io.BytesIO(qr_code), media_type="image/png")
@@ -224,18 +238,29 @@ async def verify_otp(
     )
     if user is None:
         raise verify_exception
+    if user.token is None:
+        raise verify_exception
+    if is_token_blacklisted(str(user.token)):
+        raise verify_exception
     totp = pyotp.TOTP(user.otp_base32)  # type: ignore
     if not totp.verify(totp_code):  # type: ignore
         raise verify_exception
     user.otp_enabled = True
     user.otp_verified = True
-    verified_user = await config.database.update_user(user)
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not found",
+        )
+    verified_user: UserEntity | None = (
+        await pyappm_server_config.database.update_user_async(user)
+    )
     if verified_user is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update user",
         )
-    return {"otp_verified": True, "user": verified_user}
+    return VerifyResponseModel(otp_verified=True, user=verified_user)
 
 
 @router.post("/validate", response_model=ValidateResponseModel)
@@ -247,6 +272,10 @@ def validate_otp(
         detail="Token is invalid or user doesn't exist",
     )
     if user is None:
+        raise validate_exception
+    if user.token is None:
+        raise validate_exception
+    if is_token_blacklisted(str(user.token)):
         raise validate_exception
     if not user.otp_verified:
         raise HTTPException(
@@ -261,17 +290,39 @@ def validate_otp(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     blacklist_token(user.token, ACCESS_TOKEN_EXPIRE_MINUTES_SHORT)
-    return {"otp_valid": True, "access_token": token, "token_type": "bearer"}
+    return ValidateResponseModel(
+        otp_valid=True, access_token=token, token_type="bearer"
+    )
 
 
 @router.put("/disable", response_model=DisableResponseModel)
 def disable_otp(payload: UserRequestSchema) -> DisableResponseModel:
-    user = config.database.find_user_by_id(int(payload.user_id))
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload",
+        )
+    if payload.user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user_id",
+        )
+    if is_token_blacklisted(str(payload.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not found",
+        )
+    user = pyappm_server_config.database.find_user_by_id(int(payload.user_id))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid id: {payload.user_id}",
         )
     user.otp_enabled = False
-    config.database.update_user(user)
-    return {"otp_disabled": True, "user": user}
+    pyappm_server_config.database.update_user(user)
+    return DisableResponseModel(otp_disabled=True, user=user)

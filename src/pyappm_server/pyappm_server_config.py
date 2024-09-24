@@ -36,7 +36,7 @@ from pyappm_database import Database  # type: ignore
 
 DEFAULT_APP_NAME = "pyappm_server"
 DEFAULT_DB_FILE_PATH = Path("data/pyappm.db")
-DEFAULT_CLIENT_ORIGIN = "*"
+DEFAULT_CLIENT_ORIGIN = "http://localhost:8000"
 DEFAULT_BLACKLIST_CLEANUP_INTERVAL = 60 * 5  # 5 minutes
 API_VERSION_PATH = "/api/v1"
 

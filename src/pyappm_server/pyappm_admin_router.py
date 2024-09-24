@@ -31,19 +31,19 @@
 
 from fastapi import APIRouter, HTTPException, status  # type: ignore
 
-from schemas import UsersResponseModel  # type: ignore
+from schemas import UsersResponseModel
 from schemas import UserEntity
 from schemas import SaferUserEntity
 from schemas import AppsResponseModel
-from schemas import ApplicationSchema
 from schemas import AuthorsResponseModel
 
 
 from fastapi import Depends
 
-from pyappm_auth_tools import __get_current_user__  # type: ignore
+from pyappm_auth_tools import __get_current_user__
+from pyappm_auth_tools import is_token_blacklisted
 
-import config  # type: ignore
+import pyappm_server_config
 
 router = APIRouter()
 
@@ -57,12 +57,22 @@ async def read_users(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found",
         )
+    if is_token_blacklisted(str(user.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
     if user.otp_valid is False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Login with 2FA is required",
         )
-    users = await config.database.read_users_async()
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    users = await pyappm_server_config.database.read_users_async()
     return users
 
 
@@ -76,13 +86,28 @@ async def read_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found",
         )
+    if is_token_blacklisted(str(user.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
     if user.otp_valid is False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Login with 2FA is required",
         )
-    user = await config.database.read_user_async(user_id)
-    return user
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    find_user = await pyappm_server_config.database.read_user_async(user_id)
+    if find_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return find_user
 
 
 @router.get("/users/{user_id}/apps", response_model=AppsResponseModel)
@@ -95,12 +120,22 @@ async def read_user_apps(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found",
         )
+    if is_token_blacklisted(str(user.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
     if user.otp_valid is False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Login with 2FA is required",
         )
-    apps = await config.database.read_apps_by_owner_id_async(user_id)
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    apps = await pyappm_server_config.database.read_apps_by_owner_id_async(user_id)
     return apps
 
 
@@ -113,10 +148,20 @@ async def read_authors(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found",
         )
+    if is_token_blacklisted(str(user.token)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is blacklisted",
+        )
     if user.otp_valid is False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Login with 2FA is required",
         )
-    authors = await config.database.read_authors_async()
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    authors = await pyappm_server_config.database.read_authors_async()
     return authors

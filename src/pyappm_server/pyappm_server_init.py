@@ -33,16 +33,16 @@ from pathlib import Path
 
 import getpass
 
-from default import reset_database_to_default  # type: ignore
-from default import register_default_user
+from pyappm_server_defaults import reset_database_to_default
+from pyappm_server_defaults import register_default_user
 
-from config import DEFAULT_APP_NAME  # type: ignore
-from config import DEFAULT_DB_FILE_PATH
-from config import DEFAULT_CLIENT_ORIGIN
+from pyappm_server_config import DEFAULT_APP_NAME
+from pyappm_server_config import DEFAULT_DB_FILE_PATH
+from pyappm_server_config import DEFAULT_CLIENT_ORIGIN
 
-from pyappm_database import Database  # type: ignore
+from pyappm_database import Database
 
-from schemas import Settings  # type: ignore
+from schemas import Settings
 
 import secrets
 
@@ -79,7 +79,7 @@ def install() -> None:
         return
     register_default_user(
         db=database,
-        user=user_name,
+        user_name=user_name,
         email=user_email,
         password=user_password,
     )

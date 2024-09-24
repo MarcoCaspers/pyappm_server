@@ -1,0 +1,1 @@
+This file is used by client.py to test the uploading of an application in the database.

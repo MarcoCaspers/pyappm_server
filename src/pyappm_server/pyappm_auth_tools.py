@@ -52,11 +52,11 @@ from fastapi import status
 
 from passlib.context import CryptContext  # type: ignore
 
-from schemas import UserEntity  # type: ignore
+from schemas import UserEntity
 
 import bcrypt  # type: ignore
 
-import config  # type: ignore
+import pyappm_server_config
 
 ACCESS_TOKEN_EXPIRE_MINUTES_SHORT = 3
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -87,10 +87,17 @@ def validate_token(token: str) -> bool:
 
 
 def cleanup_blacklist() -> None:
-    for token in token_blacklist:
+    for token in list(token_blacklist.keys()):
+        item = token_blacklist.get(token, None)
+        if item is None:
+            continue
         if token_blacklist[token] < datetime.now(timezone.utc):
             print(f"{datetime.now(timezone.utc)}|INFO|main.py|Removing token {token}")
             del token_blacklist[token]
+
+
+def is_token_blacklisted(token: str) -> bool:
+    return token in list(token_blacklist.keys())
 
 
 def __create_access_token__(data: dict, expires_delta: timedelta | None) -> str:
@@ -114,7 +121,16 @@ async def __get_current_user__(token: str = Depends(oauth2_scheme)) -> UserEntit
             raise EX_ValidationError
     except JWTError:
         raise EX_ValidationError
-    user: UserEntity = await config.database.find_async("email", email)
+    if pyappm_server_config.database is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database not available",
+        )
+    user: UserEntity | None = await pyappm_server_config.database.find_async(
+        "email", email
+    )
+    if user is None:
+        raise EX_ValidationError
     user.token = token
     if user is None:
         raise EX_ValidationError

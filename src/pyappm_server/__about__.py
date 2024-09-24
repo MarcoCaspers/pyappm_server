@@ -29,7 +29,7 @@
 # SPDX-License-Identifier: MIT
 #
 
-__version__ = "1.0.0.alpha.5"
+__version__ = "1.0.0.alpha.6"
 __author__ = "Marco Caspers"
 __email__ = "marco@0xc007.nl"
 __copyright__ = "Copyright 2024 Marco Caspers"

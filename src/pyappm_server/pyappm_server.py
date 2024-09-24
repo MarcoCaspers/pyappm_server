@@ -36,23 +36,25 @@
 #
 import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
 
-from pyappm_database import Database  # type: ignore
 
-from schemas import Settings  # type: ignore
+from pyappm_database import Database
 
-import config  # type: ignore
-from config import API_VERSION_PATH  # type: ignore
-from config import DEFAULT_BLACKLIST_CLEANUP_INTERVAL  # type: ignore
+from schemas import Settings
 
-from pyappm_otp_auth_router import router as otp_auth_router  # type: ignore
-from pyappm_std_auth_router import router as std_auth_router  # type: ignore
-from pyappm_admin_router import router as admin_router  # type: ignore
-from pyappm_apps_router import router as apps_router  # type: ignore
-from pyappm_root_router import router as root_router  # type: ignore
+import pyappm_server_config
+from pyappm_server_config import API_VERSION_PATH
+from pyappm_server_config import DEFAULT_BLACKLIST_CLEANUP_INTERVAL
 
-from pyappm_auth_tools import cleanup_blacklist  # type: ignore
+from pyappm_otp_auth_router import router as otp_auth_router
+from pyappm_std_auth_router import router as std_auth_router
+from pyappm_admin_router import router as admin_router
+from pyappm_apps_router import router as apps_router
+from pyappm_root_router import router as root_router
+
+from pyappm_auth_tools import cleanup_blacklist
 
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -60,6 +62,11 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import asyncio
 from datetime import datetime, timezone
+
+import logging
+
+ALLOW_DOC_URL = False
+LOG_REQUEST = False
 
 
 async def blacklist_cleanup_task(interval: int) -> None:
@@ -85,13 +92,34 @@ async def lifespan(app: FastAPI):
     yield
 
 
+docs_url = None
+redoc_url = None
+if ALLOW_DOC_URL is True:
+    docs_url = "/docs"
+    redoc_url = "/redoc"
+
 app: FastAPI = FastAPI(
     title="Python application manager api server",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url=None,
-    redoc_url=None,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
 )
+
+if LOG_REQUEST:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler("app.log"), logging.StreamHandler()],
+    )
+
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    body = await request.body()
+    logging.info(f"Request body: {body.decode('utf-8')}")
+    response = await call_next(request)
+    return response
 
 
 def parse_args() -> Namespace:
@@ -101,7 +129,7 @@ def parse_args() -> Namespace:
         "-d",
         "--data",
         type=str,
-        default=config.DEFAULT_DB_FILE_PATH,
+        default=pyappm_server_config.DEFAULT_DB_FILE_PATH,
         help="Path to the database file",
     )
     # parser.add_argument(
@@ -130,18 +158,20 @@ def run(app: FastAPI) -> None:
     elif path.is_file():
         db_file_path = path.resolve()
     else:
-        db_file_path = Path(config.DEFAULT_DB_FILE_PATH).resolve()
+        db_file_path = Path(pyappm_server_config.DEFAULT_DB_FILE_PATH).resolve()
 
     settings = Settings(
-        app_name=config.DEFAULT_APP_NAME,
+        app_name=pyappm_server_config.DEFAULT_APP_NAME,
         db_file_path=db_file_path,
-        client_origin=config.DEFAULT_CLIENT_ORIGIN,
+        client_origin=pyappm_server_config.DEFAULT_CLIENT_ORIGIN,
     )
-    config.database = Database(settings)
+    pyappm_server_config.settings = settings
+    pyappm_server_config.database = Database(settings)
     origins = [
         settings.client_origin,
     ]
 
+    # Protection against CORS attacks
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -149,6 +179,10 @@ def run(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add the logging middleware
+    if LOG_REQUEST:
+        app.middleware("http")(log_request)
 
     app.include_router(root_router, prefix=prefix("root"))
     app.include_router(otp_auth_router, tags=["onetimepassword"], prefix=prefix("otp"))

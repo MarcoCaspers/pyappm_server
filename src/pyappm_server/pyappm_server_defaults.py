@@ -29,13 +29,13 @@
 # SPDX-License-Identifier: MIT
 #
 
-from pyappm_database import Database  # type: ignore
-from schemas import UserToRegisterSchema  # type: ignore
-from pyappm_server.pyappm_otp_auth_router import __hash_password__  # type: ignore
+from pyappm_database import Database
+from schemas import UserToRegisterSchema
+from pyappm_otp_auth_router import __hash_password__
 from datetime import datetime, timezone
 
 
-def reset_database_to_default(db: Database):
+def reset_database_to_default(db: Database) -> None:
     db.drop_users_table()
     db.drop_app_table()
     db.drop_authors_table()
@@ -44,11 +44,13 @@ def reset_database_to_default(db: Database):
     db.create_authors_table()
 
 
-def register_default_user(db: Database, user: str, email: str, password: str):
+def register_default_user(
+    db: Database, user_name: str, email: str, password: str
+) -> None:
     user = UserToRegisterSchema(
-        name=user,
+        name=user_name,
         email=email,
-        password=__hash_password__(password=password),
+        password=str(__hash_password__(password=password)),
         otp_enabled=False,
         otp_verified=False,
         otp_base32=None,

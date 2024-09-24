@@ -39,3 +39,21 @@
 
 - Changed data directory long arg name to --data
 - Updated startup code to better handle the data directory
+
+## [1.0.0.a6] - 2024-09-23
+
+- Removed __init__.py, this is an application not  a library.
+- Fixing a whole lot of functions and return types and imports that mypy is pointing out after removing __init__.py 
+  and a whole lot of # type: ignore comments.
+- /validate endpoint, validate_otp function, added line if user.token is None then validate_exception, this may break stuff.
+  but it keeps the linter happy.
+- renamed config.py to pyappm_server_config.py
+- renamed default.py to pyappm_server_defaults.py
+- pyappm_auth_tools.py made the blacklist token cleanup function safer by copying the list of keys before iterating over it.
+  Also checked if the item with the token really exists before trying to delete it.
+  This is to try to fix "RuntimeError: dictionary changed size during iteration".
+- Added checks to see if the token the user uses is blacklisted, if so raise 401 Unauthorized.
+- Added sha_256: str for the a file hash in the ApplicationSchema in schemas.py
+- Added uploadpath to Settings in schemas.py
+- Updated ApplicationSchema so it can be used in the /apps/add endpoint when the user uploads a file.
+- Added /apps/get endpoint to get an app by its name.
